@@ -867,12 +867,12 @@ addTable(ORM(c), d)) \nonumber \\
 \end{align}
 
 \subsubsection{extractParent}
-%TODO do
 \begin{align}
-extractParent: Class \times Property \times Inheritance \times Label \times ConsistentSoftware \rightarrow Software \\
-extractParent(c, p, i, l, s) = pullUp(c, p, addParent(c, initClass(l), i, m,  addClass(initClass(l) ,s)))
-%TODO initClass(l)
-%TODO m
+& extractParent: Class \times Property \times InheritanceType \times Label \times  \nonumber \\
+& \;\;\; ConsistentSoftware \rightarrow Software \\
+& extractParent(c, p, it, l, s) = pullUp(c, p, addParent(c,inheritance(e, it), m,  addClass(e, s))) \\
+& \mathbf{where} \; e = class(l, \emptyset, \emptyset, OBJECT)  \nonumber \\
+& \;\;\; m \in Mapping, dom(m) = selectAll(ORM(c)) : \forall r \in m :  m(r) = r \nonumber
 \end{align}
 
 
