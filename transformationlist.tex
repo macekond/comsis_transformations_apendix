@@ -1,0 +1,1124 @@
+\documentclass[10pt]{article}
+
+\usepackage[fleqn]{amsmath}
+\usepackage{fullpage}
+
+\begin{document}
+%\tableofcontents \cleardoublepage
+
+\section{Notation}
+
+\begin{itemize}
+    \item $X = A*$ means X is defined as a sequence of elements from A,    \item $X = (A,B)$ means X is a tuple of pairs from A and B,    \item $X = A | B$ means X is either A or B.
+\end{itemize}
+
+\subsection{State}
+To distinguish the initial and final state of the transformation we use the symbol ' (apostrophe) to annotate all elements of the final state. Two variables $x$, $x'$ represent the same element of the model variable $x$ in the initial state and $x'$ in the final state. If there are no explicitly defined differences between $x$ and $x'$ then we assume $x = x'$. If $x$ is a tuple and there are defined differences only for part of this tuple, then we assume the rest of the tuple stays unchanged.
+
+\subsection{Transformation Definition}
+There is defined only successful processing of a transformation in the following text. All undefined paths results in $\perp$ i.e. in inconsistent state of software.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Application Model}
+\begin{align}
+& \mathbf{AppType} = APPSTRING \;|\; APPINTEGER \;|\; APPBOOLEAN \\
+& \mathbf{InheritanceType} = SINGLETABLE \; | \; TABLE-PER-CLASS  \; |  \; \\ & \;\;\;\;   JOINED\\
+& \mathbf{Inheritance} = (class, InheritanceType) \cup OBJECT \\
+& \mathbf{Association} = (label, classRef, startCardinality, endCardinality)  \\
+& \mathbf{Property} = (label, AppType, DefaultValue, \nonumber \\ & \;\;\;\;  Cardinality, Mandatory) \\
+& \mathbf{Class} = (label, Property*, Association*, Inheritance) \\
+& \mathbf{Application} = (Class*) \\
+\end{align}
+
+Only one type of \emph{InheritanceType} -- \emph{SINGLETABLE} -- is used in definitions of transformations in Sec. \ref{sec:transformations} for the sake of abbreviation. 
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Database Model}
+\subsection{Database Schema}
+\begin{align}
+&	\mathbf{Database} = ( TableSchema*, TableData* )\\
+&	\mathbf{TableSchema} = (label, primaryKey, Column*, ForeignKey*)\\
+&	\mathbf{Column} = (label, DbType, DefaultValue, Constraint*) \\
+&	\mathbf{ForeignKey} = (label, TableSchema, Constraint*) \\
+&	\mathbf{PrimaryKey} =  ( label, Sequence ) \\
+&	\mathbf{DbType} = DBSTRING \; | \; DBINT \; | \; DBBOOLEAN\\
+&	\mathbf{Constraint} = NOTNULL \; | \; UNIQUE 
+\end{align}
+
+\subsection{Data}
+\begin{align}
+&	\mathbf{TableData} = (Table, KeyPair, Pair*) \\
+&   \mathbf{KeyPair} = (PrimaryKey, Value) \\
+&	\mathbf{Pair} = ColumnValue \; | \; ForeignKeyValue \\
+&   \mathbf{ColumnValue} = (Column, Value) \\
+&   \mathbf{ForeignKeyValue} = (ForeignKey, Value)
+\end{align}
+
+\subsubsection{Mapping Between Instances}
+Some transformations affect stored data. A relation between data from different $TableData$ has to be known during execution of some transformations (e.g. $moveProperty$). The relation is defined as a mapping between $TableData$s. The mapping is defined as follows:
+\begin{align}
+& mapping: TableData \rightarrow TableData \cup \emptyset %TODO use different symbol for empty mapping
+\end{align}
+The mapping has a set of $TableData$ in its range set, this allows to define one-to-many and many-to-many relations between data. The $\emptyset$ represents a situation where there is no relation for a given element of the mapping's range. A special case of mapping is an empty mapping denoted as $m_e$, which is used when there are no $TableData$ in the domain or the range i.e. the transformation takes part on the structural level only.
+
+Each mapping has to fulfill constraints given by the structural definition of its range $TableData$. Concretely the uniqueness of column values:
+\begin{align}
+& \forall \; m \in Mapping;  x_1, x_2 \in domain(m); p_1 \in pairs(m(x_1)),  p_2 \in pairs(m(x_2)): \nonumber \\ 
+&  x_1 \neq x_2 \land \exists c \in Column, UNIQUE \in constraints(c) \land \nonumber \\ 
+&c \in pairs(columns(range(m))) \implies  p_1 \neq p_2
+\end{align}
+if the principle of uniqueness is violated then usage od such mapping leads to an inconsistent database. Next constraint of mapping is the non emptiness of columns constrained with $NOTNULL$ constraint:
+\begin{align}
+& \forall \; m \in Mapping;  x \in domain(m) :  \nonumber \\
+& \exists \; c \in Column, NOTNULL \in constraints(c) \implies m(x) \neq \emptyset
+\end{align}
+if this principle is violated then usage of such mapping leads to an inconsistent database. 
+
+There can occur data loss, when the mapping is a partial function. Usage of such mapping has to be reconsidered before its usage, because it can result in a semantically inconsistent state of the database. 
+
+The mapping can be implemented as a relation between two tables. This can be implemented e.g. as an equality of some columns or a reference from one table to the other. However, the real-life situation needs sometimes more difficult mappings, which can be implemented as a view or nested select commands. %The mapping can provide more than one match for a $TableData$ in the mapping's domain. 
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Software Model}
+\begin{align}
+& software(a, d, \rho) = \begin{cases}
+consistentSoftware(a, d, \rho) \; \textbf{if} \; a \neq \perp \; \wedge \; d \neq \perp \\ \wedge \; \rho(a) = d 
+ \\\\
+ \perp
+ \end{cases}\\
+& a \in Application, d \in Database, \rho \in ORM \nonumber
+\end{align}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Transformations}
+\label{sec:transformations}
+\subsection{Application Manipulation}
+\subsubsection{newApplication}
+Creates a new application, which does not contain classes.
+\begin{align}
+newApplication \rightarrow Application
+\end{align}
+
+\noindent \textbf{Semantics}:
+\begin{align}
+newApplication() = a \implies classes(a) = \emptyset
+\end{align}
+
+\subsubsection{addClass}
+Inserts a class into the existing application.
+\begin{align}
+addClass: Class \times Application \rightarrow Application
+\end{align}
+
+\noindent \textbf{Semantics}:
+\begin{align}
+& addClass(c, a) = a' \implies classes(a') = classes(a) \cup c \nonumber \\
+& \;\;\; \mathbf{if} \;\; \forall c_a \in classes(a): label(c_a) \neq label(c)
+\end{align}
+
+\subsubsection{addProperty}
+Inserts a property into the given class in the application. Overriding of properties in inheritance hierarchy is prohibited.
+\begin{align}
+addProperty: Class \times Property \times Application \rightarrow Application 
+\end{align}
+
+\noindent \textbf{Semantics}:
+\begin{align}
+& addProperty(c, p, a) = a' \implies properties(c') = properties(c) \cup \{ p \}  \land \nonumber \\
+& \;\;\; classes(a') = classes(a) \setminus c  \cup \{c'\}  \nonumber \\
+& \;\;\; \mathbf{if} \;\; \forall p_c \in properties(c) : label(p_c) \neq label(p) \land c \in classes(a) \land \; !\:propertyInParent(p, c)
+\end{align}
+
+\subsubsection{addAssociation}
+Inserts an association between two classes existing in the application.
+\begin{align}
+addAssociation: Class \times Association  \times Application \rightarrow Application
+\end{align}
+
+\noindent \textbf{Semantics}:
+\begin{align}
+& addAssociation(c, as, a) = a' \implies associations(c') = associations(c) \cup \{ as \}  \land \nonumber \\
+& \;\;\; classes(a') = classes(a) \setminus c  \cup \{c'\}  \nonumber \\
+& \;\;\; \mathbf{if} \;\; \forall as_c \in associations(c) : label(as_c) \neq label(as) \land \nonumber \\
+& \;\;\;\;\;\;\;\; reference(as) \in classes(a) \land c \in classes(a) \land \; !\: associationInParent(a, c)
+\end{align}
+
+\subsubsection{renameProperty}
+Renames a property in the class.
+\begin{align}
+renameProperty: Class \times Property \times Label \times Application \rightarrow Application
+\end{align}
+
+\noindent \textbf{Semantics}:
+\begin{align}
+& renameProperty(c, p, l, a) = a' \implies  label(p') = l  \land properties(c') = properties(c) \setminus p \cup \{ p' \} \land \nonumber \\
+& \;\;\; classes(a') = classes(a) \setminus c  \cup \{c'\} \land \; ! \: propertyInParent(p', c') \nonumber \\
+& \;\;\; \mathbf{if} \;\; \forall p_c \in properties(c) \land p_c \neq p : label(p_c) \neq l \land c \in classes(a) \land p \in properties(c)
+\end{align}
+
+\subsubsection{renameAssociation}
+Renames an association in the class.
+\begin{align}
+renameAssociation: Class \times Association \times Label \times Application \rightarrow Application
+\end{align}
+
+\noindent \textbf{Semantics}:
+\begin{align}
+& renameAssociation(c, as, l, a) = a' \implies  label(as') = l  \land land \nonumber \\
+& \;\;\; associations(c') = associations(c) \setminus as \cup \{ as' \} \land classes(a') = classes(a) \setminus c  \cup \{c'\} \land \nonumber \\
+& \;\;\; \; ! \: associationInParent(a', c') \nonumber \\
+& \;\;\; \mathbf{if} \;\; \forall as_c \in associations(c) \land as_c \neq as : label(as_c) \neq l \land c \in classes(a) \land as \in associations(c)
+\end{align}
+
+\subsubsection{renameClass}
+Renames a class in the application.
+\begin{align}
+renameClass: Class \times Label \times Application \rightarrow Application
+\end{align}
+
+\noindent \textbf{Semantics}:
+\begin{align}
+& renameClass(c, l, a) = a' \implies label(c') = l \land classes(a') = classes(a) \setminus c  \cup \{c'\} \nonumber \\
+& \;\;\; \mathbf{if} \;\; \forall c_a \in classes(a) \land c_a \neq c: label(c_a) \neq l  \land c \in classes(a)
+\end{align}
+
+\subsubsection{removeProperty}
+Removes property from the class and the application.
+\begin{align}
+removeProperty: Class \times Property \times Application \rightarrow Application
+\end{align}
+
+\noindent \textbf{Semantics}:
+\begin{align}
+& removeProperty(c, p, a) = a' \implies properties(c') = properties(c) \setminus p   \land \nonumber \\
+& \;\;\; classes(a') = classes(a) \setminus c  \cup \{c'\}  \nonumber \\
+& \;\;\; \mathbf{if} \;\; p \in properties(c) \land c \in classes(a)
+\end{align}
+
+\subsubsection{removeAssociation}
+Removes an association between two classes.
+\begin{align}
+removeAssociation: Class \times Association \times Application \rightarrow Application
+\end{align}
+
+\noindent \textbf{Semantics}:
+\begin{align}
+& removeAssociation(c, as, a) = a' \implies associations(c') = associations(c) \setminus as \land \nonumber \\
+& \;\;\; classes(a') = classes(a) \setminus c  \cup \{c'\} \nonumber \\
+& \;\;\; \mathbf{if} \;\; c \in classes(a) \land as \in associations(c)
+\end{align}
+
+\subsubsection{removeClass}
+Removes a class from the application.
+\begin{align}
+removeClass: Class \times Application \rightarrow Application
+\end{align}
+
+\noindent \textbf{Semantics}:
+\begin{align}
+& removeClass(c, a) = a' \implies  classes(a') = classes(a) \setminus c \nonumber \\
+& \;\;\; \mathbf{if} \;\; c \in classes(a) \land \; ! \: isReferenced(c, a) \land \; ! \: isParent(c, a)
+\end{align}
+
+\subsubsection{addParent}
+Creates a child -- parent relationship between two classes.
+\begin{align}
+addParent: Class \times Inheritance \times Application \rightarrow Application \\
+\end{align}
+
+\noindent \textbf{Semantics}:
+\begin{align}
+& addParent(c, i, a) = a' \implies parent(c') = i  \nonumber \\
+& \;\;\; classes(a') = classes(a) \setminus c  \cup \{c'\} \nonumber \\
+& \;\;\; \mathbf{if} \;\; c \in classes(a) \land class(i) \in classes(a) \land parent(c)= OBJECT \land \nonumber \\
+& \;\;\; ! \: selfParentPossibility(c, class(i), a)
+\end{align}
+
+\subsubsection{removeParent}
+Destroys a child -- parent relationship between two classes.
+\begin{align}
+removeParent: Class \times Application \rightarrow Application \\
+\end{align}
+
+\noindent \textbf{Semantics}:
+\begin{align}
+& removeParent(c, a) = a' \implies parent(c') = OBJECT \nonumber \\
+& \;\;\; \mathbf{if} \;\; c \in classes(a)
+\end{align}
+
+\subsubsection{pushDown}
+Moves the selected property from parent to all its child classes. 
+\begin{align}
+pushDown: Class \times Property \times Application \rightarrow Application
+\end{align}
+
+\noindent \textbf{Semantics}:
+\begin{align}
+& pushDown(c, p, a) = a' \implies properties(c') = properties(c) \setminus p \land \nonumber \\ 
+& \;\;\; \forall c_{ch} \in classes(a) \land class(parent(c_{ch})) = c : properties(c'_{ch}) = properties(c_{ch}) \cup p \nonumber \\
+& \;\;\;\land c'_{ch} \in classes(a') \land c_{ch} \notin classes(a') \land \nonumber \\
+& \;\;\; \forall \; p' \in c_{ch} : label(p') \neq p \nonumber \\
+& \;\;\; \mathbf{if}  \;\; c \in classes(a) \land \exists c_{ch} \in classes(a) : class(parent(c_{ch})) = c
+\end{align}
+
+
+\subsubsection{pullUp}
+Moves the selected property from child to its parent.
+\begin{align}
+pullUp: Class \times Property \times Application \rightarrow Application
+\end{align}
+\noindent \textbf{Semantics}:
+\begin{align}
+& pullUp(c, p, a) = a' \implies \exists e = class(inheritance(c)) : properties(e') = properties(e) \cup p \land \nonumber \\
+& \;\;\;  properties(c') = properties(c) \setminus p \nonumber \\
+& \;\;\; inheritance(c) \neq OBJECT \land p \in properties(c) \land \nonumber \\
+& \;\;\; \forall f \in childern(e,a) \setminus c, q \in properties(f) : label(q) \neq label(p) 
+\end{align}
+
+\subsection{Database Schema Manipulation}
+The section presents all transformations related with the database schema and data.
+\subsubsection{newDatabase}
+Creates a new empty database
+\begin{align}
+newDatabase: \rightarrow Database 
+\end{align}
+
+\noindent \textbf{Semantics}:
+\begin{align}
+newDatabase() = d \implies tableSchema(d) = \emptyset \land tableData(d) = \emptyset
+\end{align}
+
+\subsubsection{addTable}
+Adds a table schema into the database.
+\begin{align}
+addTable: TableSchema \times Database \rightarrow Database
+\end{align}
+
+\noindent \textbf{Semantics}:
+\begin{align}
+& addTable(ts, d) = d' \implies tableSchemas(d') = tableSchemas(d) \cup ts \nonumber \\
+& \;\;\; \mathbf{if}  \;\; \forall ts_d \in tableSchemas(d) : label(ts) \neq label(ts_d)
+\end{align}
+
+\subsubsection{addColumn}
+Adds a column into the table schema.
+\begin{align}
+addColumn: TableSchema \times Column \times Database \rightarrow Database
+\end{align}
+
+\noindent \textbf{Semantics}:
+\begin{align}
+& addColumn(ts, col, d) = d' \implies ts'.columns = ts.columns \cup col \land \nonumber \\
+& \;\;\; tableSchemas(d') = tableSchemas(d) \setminus ts \cup ts' \nonumber \\
+& \;\;\; \mathbf{if}  \;\;  \forall col_{ts} \in ts.columns : label(col_{ts}) \neq label(col) \land ts \in tableSchemas(d)
+\end{align}
+
+\subsubsection{addForeignKey}
+Adds a foreign key into the table.
+\begin{align}
+addForeignKey: TableSchema \times ForeignKey \times Mapping \times Database \rightarrow Database
+\end{align}
+
+\noindent \textbf{Semantics}:
+\begin{align}
+& addForeignKey(ts, fk, m, d) = d' \implies ts'.foreigKeys = ts.foreignKeys \cup fk \land \nonumber \\
+& \;\;\; tableSchemas(d') = tableSchemas(d) \setminus ts \cup ts' \land \nonumber \\
+% mapování 1:1 a 1:N vkládám do "pravé" tedy k :1 nebo :N
+& \;\;\; \forall p_i \in selectAll(ts, d), m_i \in m : p_i \in dom(m_i) \implies insertValue(id(p_i), (fk, id(m(p_i))), d')  \nonumber \\
+& \;\;\; \mathbf{if}  \;\;  \forall fk_{ts} \in ts.foreignKeys : label(fk) \neq label(fk_{ts}) \land ts \in tableSchemas(d)
+\end{align}
+
+\subsubsection{alterColumnName}
+Changes the name of a column in the table schema.
+\begin{align}
+alterColumnName: TableSchema \times Column \times Label \times Database \rightarrow Database
+\end{align}
+
+\noindent \textbf{Semantics}:
+\begin{align}
+& alterColumnName(ts, col, l, d) = d' \implies label(col') = l \land \nonumber \\
+& \;\;\; columns(ts') = columns(t) \setminus col \cup col' \land tableSchemas(d') = tableSchemas(d) \setminus ts \cup ts'  \nonumber \\
+& \;\;\; \mathbf{if}  \;\;  \forall col_{ts} \in ts.columns : label(col_{ts}) \neq l \land ts \in tableSchemas(d) \land col \in columns(ts) 
+\end{align}
+
+\subsubsection{alterForeignKeyName}
+Changes the name of a foreign key in the table schema.
+\begin{align}
+alterForeignKeyName: TableSchema \times ForeignKey \times Label \times Database \rightarrow Database
+\end{align}
+
+\noindent \textbf{Semantics}:
+\begin{align}
+& alterForeignKeyName(ts, fk, l, d) = d' \implies \implies label(ts') = l \land \nonumber \\
+& \;\;\; foreignKeys(ts') = foreignKeys(t) \setminus col \cup col' \land tableSchemas(d') = tableSchemas(d) \setminus ts \cup ts'  \nonumber \\
+& \;\;\; \mathbf{if}  \;\;  \forall fk_{ts} \in ts.foreignKeys : label(fk_{ts}) \neq l \land ts \in tableSchemas(d) \land \nonumber \\
+& \;\;\;\;\;\; fk \in foreignKeys(ts) 
+\end{align}
+
+\subsubsection{alterTableName}
+Changes the name of a table in the database schema.
+\begin{align}
+alterTableName: TableSchema \times Label \times Database \rightarrow Database
+\end{align}
+
+\noindent \textbf{Semantics}:
+\begin{align}
+& alterTableName(ts, l, d) = d' \implies label(ts') = l \land tableSchemas(d') = tableSchemas(d) \setminus ts \cup ts'  \nonumber \\
+& \;\;\; \mathbf{if}  \;\;  \forall ts_d \in tableSchemas(d) : label(ts_d) \neq l \land \land ts \in tableSchemas(d) 
+\end{align}
+
+\subsubsection{dropColumn}
+Removes a column from the table schema.
+\begin{align}
+dropColumn: TableSchema \times Column \times Database \rightarrow Database
+\end{align}
+
+\noindent \textbf{Semantics}:
+\begin{align}
+& dropColumn(ts, col, d) = d' \implies columns(ts') = columns(ts) \setminus col \land \nonumber \\
+& \;\;\ tableSchemas(d') = tableSchemas(d) \setminus ts \cup ts'  \nonumber \\
+& \;\;\; \mathbf{if}  \;\; col \in columns(ts)
+\end{align}
+
+\subsubsection{dropEmptyColumn}
+Removes a column from the table schema only if there are no data stored.
+\begin{align}
+dropEmptyColumn: TableSchema \times Column \times Database \rightarrow Database
+\end{align}
+
+\noindent \textbf{Semantics}:
+\begin{align}
+& dropEmptyColumn(ts, col, d) = dropColumn(ts, col, d)  \nonumber \\
+& \;\;\; \mathbf{if}  \;\; \forall td \in tableData(d) : table(td) \neq ts \lor \forall cv \in pairs(ts) : column(cv) \neq col
+\end{align}
+
+
+\subsubsection{dropForeignKey}
+Removes a foreign key from the table schema.
+\begin{align}
+dropForeignKey: TableSchema \times ForeignKey \times Database \rightarrow Database
+\end{align}
+
+\noindent \textbf{Semantics}:
+\begin{align}
+& dropForeignKey(ts, fk, d) = d' \implies foreignKeys(ts') = foreignKeys(ts) \setminus fk \land \nonumber \\
+& \;\;\ tableSchemas(d') = tableSchemas(d) \setminus ts \cup ts'  \nonumber \\
+& \;\;\; \mathbf{if}  \;\; fk \in foreignKeys(ts)
+\end{align}
+
+\subsubsection{dropEmptyForeignKey}
+Removes a foreign key from the table schema only if there are no data stored.
+\begin{align}
+dropEmptyForeignKey: TableSchema \times ForeignKey \times Database \rightarrow Database
+\end{align}
+
+\noindent \textbf{Semantics}:
+\begin{align}
+& dropEmptyForeignKey(ts, fk, d) = dropForeignKey(ts, fk, d) \nonumber \\
+& \;\;\; \mathbf{if}  \;\;  \forall td \in tableData(d) : table(td) \neq ts \lor \forall fv \in pairs(ts) : foreignKey(fv) \neq fk
+\end{align}
+
+\subsubsection{dropTable}
+Removes a table schema from the database.
+\begin{align}
+dropTable: TableSchema \times Database \rightarrow Database
+\end{align}
+
+\noindent \textbf{Semantics}:
+\begin{align}
+& dropTable(ts, d) = d' \implies tableSchemas(d') = tableSchemas(d) \setminus ts  \nonumber \\
+& \;\;\; \mathbf{if}  \;\; ts \in tableSchemas(d) \land \; ! \: isReferenced(t, d)
+\end{align}
+
+\subsubsection{dropEmptyTable}
+Removes a table schema from the database only if there are no stored data.
+\begin{align}
+dropEmptyTable:  TableSchema \times Database \rightarrow Database
+\end{align}
+
+\noindent \textbf{Semantics}:
+\begin{align}
+& dropEmptyTable(ts, d) = dropTable(ts, d) \nonumber \\
+& \;\;\; \mathbf{if} \; \forall td \in tableData(d) : table(td) \neq ts
+\end{align}
+
+
+\subsubsection{copyColumn}
+\begin{align}
+& copyColumn: TableSchema \times TableSchema \times Column \times Mapping \times Database   \nonumber \\
+& \;\;\; \rightarrow Database
+\end{align}
+
+\noindent \textbf{Semantics}:
+\begin{align}
+& copyColumn(ts_1, ts_2, col, m, d) = d' \implies 
+columns(ts_2') = columns(ts_2) \cup col \land \nonumber \\
+& \;\;\; \forall p_i \in selectAll(ts_1, d) \land p_i \in dom(m_i), m_i \in m, q_{i} \in ran(m_i) : m(p_i) = q_i \implies \nonumber \\
+& \;\;\;  insertValue(id(q_i), (col, valueOfColumn(col, p_i)), d')  \nonumber \\
+& \;\;\; \mathbf{if} \; ts_1 \neq ts_2 \land col \in columns(ts_1)
+\end{align}
+
+
+\subsubsection{copyTable}
+\begin{align}
+copyTable: TableSchema \times Label \times Database \rightarrow Database 
+\end{align}
+%TODO tady není mapping - musí se vytvořit
+\noindent \textbf{Semantics}:
+\begin{align}
+& copyTable(ts, l m, d) = d' \implies
+\exists ts_2 = (l, primaryKey(ts), columns(ts), \nonumber \\
+& \;\;\; foreignKeys(ts)) : ts_2 \in tableSchemas(d') \land ts_2 \notin tableSchemas(d) \nonumber \\
+& \;\;\; \forall q \in ran(m) : p \in dom(m) \land m(m) = q \land \nonumber \\  
+& \;\;\; insertData(next(sequence(primaryKey(ts_2))), pairs(p))  \nonumber \\
+& \;\;\; \mathbf{if} \; \forall t \in tableSchemas(d) : label(t) \neq l \land ts \in tableSchemas(d)
+\end{align}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Evolution}
+\subsection{Basic Transformations}
+
+\subsubsection{newSoftware}
+\begin{align}
+& newSoftware: \rightarrow Software \\
+& newSoftware() = s \implies software(\Psi(newSoftware, \emptyset), \Phi(newSoftware, \emptyset))
+\end{align}
+
+\noindent \textbf{Interpretation}:
+\begin{align}
+\Psi(newSoftware, \emptyset) = newApplication()
+\end{align}
+\begin{align}
+\Phi(newSoftware, \emptyset) = newDatabase()
+\end{align}
+
+
+\subsubsection{newClass}
+\begin{align}
+& newClass: Class \times Software \rightarrow Software \\
+& newClass(c, s) = s' \implies software(\Psi(newClass(c), application(s)), \nonumber \\
+& \;\;\; \Phi(newClass(c), database(s))
+\end{align}
+
+\noindent \textbf{Interpretation}:
+\begin{align}
+\Psi(newClass(c), a) = addClass(c, a)
+\end{align}
+\begin{align}
+\Phi(newClass(c), d) = addTable(ORM(c),  d)
+\end{align}
+
+
+\subsubsection{newProperty}
+\begin{align}
+& newProperty: Class \times Property \times Software \rightarrow Software \\
+& newProperty(c, p, s) = s' \implies \nonumber \\ 
+& \;\;\; software(\Psi(newProperty(c, p), application(s)), \Phi(newProperty(c,p), database(s))
+\end{align}
+
+\noindent \textbf{Interpretation}:
+\begin{align}
+\Psi(newProperty(c, p), a) = addProperty(c, p, a)
+\end{align}
+\begin{align}
+\Phi(newProperty(c, p), d) = \begin{cases}
+  addColumn(ORM(c), ORM(p),  d) \\ \mathbf{if} \; cardinality(p) = 1  \\\\ 
+  \; addTable(ORM(p),  d) \\
+  \mathbf{if} \; cardinality(p) > 1  
+   \end{cases}
+\end{align}
+
+
+\subsubsection{newAssociation}
+\begin{align}
+& newAssociation: Class \times Association \times Mapping \times Software \rightarrow Software \\
+& newAssociation(c, as, s) = s' \implies \nonumber \\ 
+& \;\;\; software(\Psi(newAssociation(c, as), application(s)), \Phi(newAssociation(c, as), database(s))
+\end{align}
+
+\noindent \textbf{Interpretation}:
+\begin{align}
+\Psi(newAssociation(c, as), a) = addAssociation(c, as, a)
+\end{align}
+\begin{align}
+& \Phi(newAssociation(c, as), d) = \forall r \in selectAll(ORM(c), d') : r \in dom(m) \implies \nonumber \\ & \;\;\; insertData(m(r), d') \land d' = addTable(ORM(as),  d) \nonumber \\
+& \mathbf{where} \; dom(m) \in selectAll(ORM(c),d) \land ran(m) \in selectAll(ORM(reference(as)), d)
+\end{align}
+
+
+%TODO kolize jmen s aplikační úrovní?
+\subsubsection{renameProperty}
+\begin{align}
+& renameProperty: Class \times Property \times Label \times Software \rightarrow Software \nonumber \\
+& renameProperty(c, p, l, s) = software(\Psi(renameProperty(c, p, l), application(s)),  \nonumber \\ 
+& \;\;\; \Phi(renameProperty(c, p, l), database(s))
+\end{align}
+
+\noindent \textbf{Interpretation}:
+\begin{align}
+\Psi(renameProperty(c, p, l), a) = renamePropery(c, p, l, a) 
+\end{align}
+\begin{align}
+\Phi(renameProperty(c, p, l), d) = \begin{cases}
+  alterColumnName(ORM(c), ORM(p), l,  d) \\ \mathbf{if} \; cardinality(p) = 1  \\\\ 
+  \; alterTable(ORM(p), l,  d) \\
+  \mathbf{if} \; cardinality(p) > 1  
+   \end{cases}
+\end{align}
+
+%TODO kolize jmen s aplikační úrovní?
+\subsubsection{renameAssociation}
+\begin{align}
+& renameAssociation: Class \times Association \times Label \times Software \rightarrow Software \nonumber \\
+& renameAssociation(c, as, l, s) = software(\Psi(renameAssociation(c, as, l), application(s)),  \nonumber \\ 
+& \;\;\;\Phi(renameAssociation(c, as, l), database(s))
+\end{align}
+
+\noindent \textbf{Interpretation}:
+\begin{align}
+\Psi(renameAssociation(c, as, l), a) = renameAssociation(c, as, l, a)
+\end{align}
+\begin{align}
+\Phi(renameAssociation(c, as, l), d) = alterTableName(ORM(as), l, d)
+\end{align}
+
+%TODO kolize jmen s aplikační úrovní?
+\subsubsection{renameClass}
+\begin{align}
+& renameClass: Class \times Label \times Software \rightarrow Software \nonumber \\
+& renameClass(c, l s) = software(\Psi(renameClass(c, l), application(s)), \nonumber \\
+& \;\;\; \Phi(renameClass(c, l), database(s))
+\end{align}
+
+\noindent \textbf{Interpretation}:
+\begin{align}
+\Psi(renameClass(c, l), a) = renameClass(c, l, a)
+\end{align}
+\begin{align}
+\Phi(renameClass(c, l), d) = alterTableName(ORM(c), l, d)
+\end{align}
+
+%TODO kolize jmen s aplikační úrovní?
+\subsubsection{removeProperty}
+\begin{align}
+& removeProperty: Class \times Property \times Software \rightarrow Software \nonumber \\
+& removeProperty(c, p, s) = \begin{cases}
+    software(\Psi(removeProperty(c, p), application(s)),  \\ 
+        \;\; \Phi(removeProperty(c, p), database(s)) \\
+    \mathbf{if} \; |p| = 1 \\\\
+    removeProperty(c, tail(p), removeProperty(c, head(p), s)) \\
+        \mathbf{if} \; |p| > 1
+ \end{cases}
+\end{align}
+
+\noindent \textbf{Interpretation}:
+\begin{align}
+\Psi(removeProperty(c, p), a) = removeProperty(c, p, a)
+\end{align}
+\begin{align}
+\Phi(removeProperty(c, p), d) = \begin{cases}
+ dropColumn(ORM(c), ORM(p), d)) \\ \mathbf{if} \; cardinality(p) = 1  \\\\ 
+ dropTable(ORM(p), d) \\ \mathbf{if} \; cardinality(p) > 1 
+ \end{cases}
+\end{align}
+
+%TODO kolize jmen s aplikační úrovní?
+\subsubsection{removeAssociation}
+\begin{align}
+& removeAssociation: Class \times Association \times Software \rightarrow Software \nonumber \\
+& removeAssociation(c, as, s) = \begin{cases}
+   software(\Psi( removeAssociation(c, as), application(s)), \\ 
+    \;\;\; \Phi(removeAssociation(c, as), database(s)) \\
+     \mathbf{if} \; |as| = 1 \\\\
+   removeAssociation(c, tail(as), removeAssociation(c, head(as), s)) \\
+     \mathbf{if} \; |as| > 1 
+ \end{cases}
+\end{align}
+
+\noindent \textbf{Interpretation}:
+\begin{align}
+\Psi(removeAssociation(c, as), a) = removeAssociation(c, as, a)
+\end{align}
+\begin{align}
+\Phi(removeAssociation(c, as), d) = dropTable(ORM(as), d)
+\end{align}
+
+%TODO kolize jmen s aplikační úrovní?
+\subsubsection{removeClass}
+\begin{align}
+& removeClass: Class \times Software \rightarrow Software \nonumber \\
+& removeClass(c, s) = \begin{cases}
+ software(\Psi(removeClass(c), application(s)), \\
+\;\;\; \Phi(removeClass(c), database(s)) \\
+\mathbf{if} \; |c| = 1 \\\\
+ removeClass(tail(c), removeClass(head(c), s)) \\
+\mathbf{if} \; |c| > 1
+ \end{cases}
+\end{align}
+
+\noindent \textbf{Interpretation}:
+\begin{align}
+\Psi(removeClass(c), a) = removeClass(c, a)
+\end{align}
+\begin{align}
+\Phi(removeClass(c), d) = dropTable(ORM(c), d)
+\end{align}
+
+\subsubsection{copyProperty}
+\begin{align}
+& copyProperty: Class \times Class \times Property \times Mapping \times Software \rightarrow Software \\
+& copyProperty(c_s, c_t, p, m, s) = software(\Psi(copyProperty(c_s, c_t, m, p), application(s)), \nonumber \\
+& \;\;\; \Phi(copyProperty(c_s, c_t, m, p), database(s)))
+\end{align}
+
+\noindent \textbf{Interpretation}:
+\begin{align}
+\Psi(copyProperty(c_s, c_t, p, m), a) = removeProperty(c_s, p, newProperty(c_t, p, a))
+\end{align}
+\begin{align}
+\Phi(copyProperty(c_s, c_t, p, m), d) = \begin{cases}
+ copyColumn(ORM(c_s), ORM(c_t), ORM(p), m, d) \\
+ \mathbf{if} \; cardinality(p) = 1  \\\\
+ copyPropertyAsTable(ORM(c_s), ORM(c_t), ORM(p), m, d) \\ 
+ \mathbf{if} \; cardinality(p) > 1
+ \end{cases}
+\end{align}
+
+\subsubsection{moveProperty}
+\begin{align}
+& moveProperty: Class \times Class \times Property \times Mapping \times Software \rightarrow Software \\
+& moveProperty(c_s, c_t, p, m, s) = removeProperty(c_s, p, copyProperty(c_s, c_t, p, m, s))
+\end{align}
+
+\subsubsection{mergeClasses}
+\begin{align}
+& mergeClass:  Class \times Class \times Mapping \times Software \rightarrow Software \\
+%má jen jednu property, vysvětlit, kde se vzala p
+%TODO definovat postupnou aplikaci
+& mergeClass(c_1, c_2, m, s) = removeClass(c_2, moveProperty(c_1, c_2, p, m, s)) \\
+& \mathbf{where} p \in properties(c_2) \nonumber \\ 
+& \;\; \mathbf{if} !isReferenced(c_2, application(s))
+\end{align}
+
+
+\subsubsection{splitClass}
+\begin{align}
+& splitClass: Class \times Label \times Property \times Software \rightarrow Software \\
+& splitClass(c, l, p, s) = software(\Psi(splitClass(c, l, p), application(s)), \nonumber \\
+& \;\;\; \Phi(splitClass(c, l, p), database(s)))
+\end{align}
+
+\noindent \textbf{Interpretation}:
+\begin{align}
+& \Psi(splitClass(c, l, p), a) =
+removeProperty(c, p, newProperty(c_n, p,  addClass(c_n, a))) \nonumber \\
+& \;\;\; c_n = class(l, \emptyset, \emptyset, OBJECT)
+\end{align}
+\begin{align}
+%TODO použití copycolumn tu není dobré - spíš insert
+\Phi(splitClass(c, l, p), d) = \begin{cases}
+dropColumn(ORM(c), ORM(p), copyColumn(ORM(c), \\  \;\; ORM(propToClass(p)), m, addTable(ORM(propToClass(p, l)), d)))\\
+\mathbf{where} \; m = \forall r \in selectAll(ORM(c), d) : \\  \;\; m(r) = tableData((ORM(propToClass(p, l)), keyPair(r), \\  \;\;\;\; pairOfColumn(ORM(p), pairs(r)))) \\ 
+  \mathbf{if} \; cardinality(p) = 1   \\\\
+alterTableName(ORM(p), l, dropForeignKey(ORM(p), \\ \;\; foreignKeys(ORM(p), d)) \\ 
+  \mathbf{if} \; cardinality(p) > 1  
+ \end{cases}
+\end{align}
+
+%Property To Association
+\subsubsection{extractPropertyAsObject}
+\begin{align}
+& extractPropertyAsObject: Class \times Property \times Label \times Software \rightarrow Software \nonumber \\
+& extractPropertyAsObject(c, p, l, s) = 
+ software(\Psi(extractPropertyAsObject(c, p, l), application(s)), \nonumber \\
+ & \;\;\; \Phi(extractPropertyAsObject(c, p, l), database(s)))
+\end{align}
+
+\noindent \textbf{Interpretation}:
+\begin{align}
+& \Phi(extractPropertyAsObject(c, p, l), a) =  addAssociation(c,  association(l, propToClass(p, l), 1,\nonumber \\
+ & \;\;\;  cardinality(p)), addClass(propToClass(p, l), a))
+\end{align}
+\begin{align}
+%TODO data
+& \Psi(extractPropertyAsObject(c, p, l), d) = \\
+& \;\;\;\; \begin{cases}
+ addForeignKey(ts_t, foreignKey(label(c), ORM(c), NOTNULL), \\
+ \;\; copyColumn(ORM(c), ts_t, m,  addTable(ts_t, d))) \\
+ \mathbf{if}\; cardinality(p) = 1
+ \mathbf{where} ts_t = (ORM(propToClass(p, l))
+ \\\\
+ alterTableName(ORM(p), l, d) \\
+ \mathbf{if}\; cardinality(p) > 1
+ \end{cases}
+\end{align}
+
+
+%Association to property
+\subsubsection{inlineObjectAsProperty}
+The transformation \emph{inlineObjectAsProperty} creates a property from the given class. The constraint is that the class to inline has only one property of primitive type and it is not referenced. The transformation \emph{inlineObjectAsProperty} is the opposite do \emph{extractPropertyAsObject}.
+\begin{align}
+& inilineObjectAsProperty: Class \times Class \times Mapping \times Software \rightarrow Software \nonumber \\
+% má jen jednu property
+& inilineObjectAsProperty(c_1, c_2, m, s) = software(\Psi(inilineObjectAsProperty(c_1, c_2, m), \nonumber \\  
+& \;\;\; application(s)), \Phi(inilineObjectAsProperty(c_1, c_2, m), database(s)))
+\end{align}
+
+\noindent \textbf{Interpretation}:
+\begin{align}
+\Psi(inilineObjectAsProperty(c_1, c_2, m), a) =  removeClass(c_2, moveProperty(c_1, c_2, p, a))  
+\end{align}
+\begin{align}
+& \Phi(inilineObjectAsProperty(c_1, c_2, m), d) = \nonumber \\ 
+& \;\;\; \begin{cases}
+ dropTable(ORM(c_2), copyColumn(ORM(c_2), ORM(c_1), ORM(p), m, d) \\
+%1:1 
+\;\; \mathbf{if} \;  \forall x, z \in dom(m), y \in ran(m) : m(x) = y \land  
+ m(z) = y \implies x = z 
+ \\\\
+ d \\
+ %1:N
+ \;\; \mathbf{if} \; \exists x \in dom(m), y, z \in ran(m) : m(x) = \{y, z\} \land y \neq z
+ \end{cases} \nonumber \\
+& \;\;\; \mathbf{if} \; p \in properties(c_2) \land |properties(c_2)| = 1 \land ! isReferenced(c,application(s)) 
+\end{align}
+
+
+
+%TODO kolize jmen s aplikační úrovní?
+%TODO funguje i když je A nebo B prázdné?
+\subsubsection{addParent}
+\begin{align}
+& addParent: Class \times Inheritance \times Mapping \times Software \rightarrow Software \nonumber \\
+& addParent(c, ih, m, s) = software(\Psi(addParent(c, ih, m), application(s)), \nonumber \\
+& \;\;\;  \Phi(addParent(c, ih, m), database(s)))
+\end{align}
+
+\noindent \textbf{Interpretation}:
+\begin{align}
+\Psi(addParent(c, ih, m), a) = addParent(c, ih, a)
+\end{align}
+\begin{align}
+\Phi(addParent(c, ih, m), d) = \Phi(mergeClasses(c, class(ih), m), d)
+\end{align}
+
+%TODO kolize jmen s aplikační úrovní?
+\subsubsection{removeParent}
+\begin{align}
+& removeParent: Class \times Software \rightarrow Software \nonumber \\
+& removeParent(c, s) = software(\Psi(removeParent(c), application(s)), \nonumber \\
+& \;\;\;  \Phi(removeParent(c), database(s)) \nonumber \\
+& \mathbf{if} \; \forall e \in classes(application(a)) : class(inheritance(e)) \neq c
+\end{align}
+
+\noindent \textbf{Interpretation}:
+\begin{align}
+\Psi(removeParent(c), a) = removeParent(c, a)
+\end{align}
+\begin{align}
+&\Phi(removeParent(c), d) = 
+%TODO extend interpretation - move children as well
+%TODO má jen jednu property
+%TODO změnit reference
+ dropColumn(ORM(class(inheritance(c))), ORM(properties(c)) \setminus \nonumber \\ 
+& \;\;\; ORM(properties(class(inheritance(c)))), copyColumn(ORM(class(inheritance(c))), ORM(c), \nonumber \\ 
+& \;\;\; ORM(properties(c)), m, 
+addTable(ORM(c), d)) \nonumber \\
+& \mathbf{where} \; m = \forall r \in selectAll(ORM(c), d) : \nonumber \\  
+& \;\; m(r) = tableData((ORM(c), keyPair(r), pairOfColumn(ORM(properties(c)), pairs(r))))  
+\end{align}
+
+%TODO kolize jmen s aplikační úrovní?
+\subsubsection{pushDown}
+\begin{align}
+& pushDown: Class \times Property \times Software \rightarrow Software \nonumber \\
+& pushDown(c, p, s) = software(\Psi(pushDown(c, p), application(s)), \nonumber \\
+& \;\;\; \Phi(pushDown(c, p), database(s))
+\end{align}
+
+\noindent \textbf{Interpretation}:
+\begin{align}
+\Psi(pushDown(c, p), a) = pushDown(c, p, a)
+\end{align}
+\begin{align}
+\Phi(pushDown(c, p), d) = d
+\end{align}
+
+%TODO kolize jmen s aplikační úrovní?
+\subsubsection{pullUp}
+\begin{align}
+& pullUp: Class \times Property \times Software \rightarrow Software \nonumber \\
+& pullUp(c, p, s) = software(\Psi(pullUp(c, p), application(s)), \Phi(pullUp(c, p), database(s))
+\end{align}
+
+\noindent \textbf{Interpretation}:
+\begin{align}
+\Psi(pullUp(c, p), a) = pullUp(c, p, a)
+\end{align}
+\begin{align}
+\Phi(pullUp(c, p), d) = d
+\end{align}
+
+\subsubsection{extractParent}
+%TODO do
+\begin{align}
+extractParent: Class \times Property \times Inheritance \times Label \times ConsistentSoftware \rightarrow Software \\
+extractParent(c, p, i, l, s) = pullUp(c, p, addParent(c, initClass(l), i, m,  addClass(initClass(l) ,s)))
+%TODO initClass(l)
+%TODO m
+\end{align}
+
+
+\subsubsection{extractCommonParent}
+%TODO do
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Helpers}
+This section contains functions, which serves to obtain information about a model element.
+\subsection{Application Helpers}
+
+\subsubsection{propertyInParent}
+Returns true if a property with the same name already exists in some class of the inheritance hierarchy.
+\begin{align}
+& propertyInParent: Property \times Class \rightarrow Boolean \\
+& propertyInParent(p, c) = \begin{cases}
+ false \\
+ \mathbf{if} \; inheritance(c) = OBJECT \\ \\
+ propertyInParent(p, class(inheritance(c))) \\
+ \mathbf{if} \; \forall \; p_c \in properties(c) : label(p_c) \neq label(p) \\ \\
+ true \\
+ \mathbf{if} \; \exists \; p_c \in properties(c) : label(p_c) = label(p) 
+ \end{cases}
+\end{align}
+
+\subsubsection{associationInParent}
+Returns true if a association with the same name already exists in some class of the inheritance hierarchy.
+\begin{align}
+& associationInParent: Association \times Class \rightarrow Boolean \\
+& associationInParent(a, c) = \begin{cases}
+ false \\
+ \mathbf{if} \; inheritance(c) = OBJECT \\ \\
+ associationInParent(a, class(inheritance(c))) \\
+ \mathbf{if} \; \forall \; a_c \in associations(c) : label(a_c) \neq label(a) \\ \\
+ true \\
+ \mathbf{if} \; \exists \; a_c \in associations(c) : label(a_c) = label(a) 
+ \end{cases}
+\end{align}
+
+\subsubsection{isReferenced}
+Returns true if the class is referenced in the given application.
+\begin{align}
+& isReferenced: Class \times Application \rightarrow Boolean \\
+& isReferenced(c, a) = \begin{cases}
+ false \\
+ \mathbf{if} \; \forall \; x \in classes(a), a_x \in associations(x) : reference(a_x) \neq c \\ \\
+ true \\
+ \mathbf{if} \; \exists \; x \in classes(a), a_x \in associations(a) : reference(a_x) = c 
+ \end{cases}
+\end{align}
+
+\subsubsection{isParent}
+Returns true if the class is a parent of any other class in the model.
+\begin{align}
+& isParent: Class \times Application \rightarrow Boolean \\
+& isParent(c, a) = \begin{cases}
+ false \\
+ \mathbf{if} \; \forall \: x \in classes(a) : class(inheritance(x)) \neq c \\\\
+ true \\
+  \mathbf{if} \; \exists \: x \in classes(a) : class(inheritance(x)) = c
+ \end{cases}
+\end{align}
+
+\subsubsection{selfParentPossibility}
+Returns true if the first given class is in the direct or indirect parent of the second class. 
+\begin{align}
+& selfParentPossibility: Class \times  Class \rightarrow Boolean \\
+& selfParentPossibility(c, c_{parent}) = \begin{cases}
+ false \\
+ \mathbf{if} \; class(inheritance(c_{parent})) = OBJECT \land c_{parent} \neq c \\\\
+ selfParentPossibility(c, class(inheritance(c_{parent}))\\
+ \mathbf{if} \; class(inheritance(c_{parent})) \neq c \; \land  \\ \;\; class(inheritance(c_{parent})) \neq OBJECT \\\\
+ true \\
+ \mathbf{if} \; c_{parent} = c
+ \end{cases}
+\end{align}
+
+\subsection{Database Helpers}
+
+\subsubsection{selectOne}
+\begin{align}
+selectOne: TableSchema \times ID \times  Database \rightarrow TableData
+\end{align}
+
+\textbf{Semantics}:
+\begin{align}
+& selectOne(ts, id, d) = td \implies td \in tableData(d) \land id(td) = id \land table(td) = ts \nonumber \\
+& \;\;\; \mathbf{if}  \;\; ts \in tableSchemas(d)
+\end{align}
+
+\subsubsection{selectAll}
+\begin{align}
+selectAll: TableSchema \times  Database \rightarrow TableData
+\end{align}
+
+\textbf{Semantics}:
+\begin{align}
+& selectAll(ts, d) = td \implies td \in tableData(d) \land table(td) = ts \nonumber \\
+& \;\;\; \mathbf{if}  \;\; ts \in tableSchemas(d)
+\end{align}
+
+\subsubsection{insertData}
+\begin{align}
+insertData: TableData \times Database \rightarrow Database
+\end{align}
+
+\textbf{Semantics}:
+\begin{align}
+insertData(td, d) = d' \implies tableData(d') = tableData(d) \cup td 
+\end{align}
+
+\subsubsection{insertValue}
+\begin{align}
+insertValue: ID \times Pair \times  Database \rightarrow Database
+\end{align}
+
+\textbf{Semantics}:
+\begin{align}
+insertValue(id, p, d) = d' \implies
+\end{align}
+
+\subsubsection{deleteData}
+\begin{align}
+deleteData: TableSchema \times ID \times  Database \rightarrow Database
+\end{align}
+
+\textbf{Semantics}:
+\begin{align}
+& deleteData(ts, id, d) = d' \implies \exists td \in tableData(d) : id(td) = id \land table(td) = ts \land \nonumber \\
+& \;\;\; tableData(d') = tableData(d) \setminus td
+\end{align}
+
+%TODO is it needed?
+\subsubsection{delete}
+\begin{align}
+delete: TableSchema \times ID \times Column \times Database \rightarrow Database
+\end{align}
+
+\textbf{Semantics}:
+\begin{align}
+\end{align}
+
+
+\subsubsection{isReferenced}
+Returns true if there is a foreign key, which references given class, in the database.
+\begin{align}
+& notReferenced: TableSchema \times Database \rightarrow Boolean \\
+& notReferenced(t, d) = \begin{cases}
+ false \\
+ \mathbf{if} \; \forall t_s \in tableSchemas(d), fk \in foreignKeys(t_s) : reference(fk) \neq t \\\\
+ true \\
+ \mathbf{if} \;  \exists t_s \in tableSchemas(d), fk \in foreignKeys(t_s) : reference(fk) = t
+ \end{cases}
+\end{align}
+
+\subsubsection{valueOfColumn}
+\begin{align}
+& valueOfColumn: Column \times Pair \rightarrow Value \\
+& valueOfColumn(c, p) = value(p) \land c = column(p)
+\end{align}
+
+\subsubsection{pairOfColumn}
+\begin{align}
+& pairOfColumn: Column \times TableData \rightarrow Pair \\
+& pairOfColumn(c, td) = p \implies p \in pairs(td) \land column(p) = c
+\end{align}
+
+
+\subsubsection{pairsColumValue}
+\begin{align}
+& pairsColumValue: Pair \times ColumnValue \\
+& pairsColumValue(p) = q \implies q \in p \land column(q) \neq \emptyset  
+\end{align}
+
+\subsubsection{copyPropertyAsTable}
+\begin{align}
+copyPropertyAsTable: TableSchema \times TableSchema \times Mapping \times Database \rightarrow Database
+\end{align}
+\begin{align}
+& copyPropertyAsTable(ts_s, ts_t, m, d) = d' \implies \nonumber  \\
+& \;\;\; fk_1 = foreignKeys(ts_s) \land fk_2 = foreignKey(ts_t, constraints(fk) \land \nonumber   \\
+& \;\;\;  \exists ts_2 = (l, primaryKey(ts), columns(ts), fk_2) :  \nonumber \\
+& \;\;\;  ts_2 \in tableSchemas(d') \land ts_2 \notin tableSchemas(d) \nonumber \\
+& \;\;\; \forall q \in ran(m) : p \in dom(m) \land m(m) = q \land \nonumber \\  
+& \;\;\; insertData(next(sequence(primaryKey(ts_2))), pairsColumValue(p) \cup (fk_2, id(q)) , d')  \nonumber \\
+& \;\;\; \mathbf{if} \; \forall t \in tableSchemas(d) : label(t) \neq l \land ts \in tableSchemas(d)
+\end{align}
+
+\subsubsection{propToClass}
+\begin{align}
+& propToClass: Property \times Label \rightarrow Class \\
+& propToClass(p, l) = class(l, p, \emptyset, OBJECT)
+\end{align}
+
+\subsubsection{childern}
+\begin{align}
+& childern : Class \times Application \rightarrow Class \\
+& childern(c, a) = e \implies class(inheritance(e)) = c \land c \in classes(a) \land e \in classes(a)
+\end{align}
+
+
+
+\end{document}
+
+\subsubsection{}
+\begin{align}
+\end{align}
+
+\textbf{Semantics}:
+\begin{align}
+\end{align}
+
+
+\begin{align}
+\end{align}
+\begin{align}
+\Psi
+\end{align}
+
+\begin{align}
+\Phi
+\end{align}
+
+
+%TODO is it needed?
+\subsubsection{copyColumnStructure}
+\begin{align}
+& copyColumnStructure: TableSchema \times TableSchema \times Column \times Label \times Database  \nonumber \\
+& \;\;\; \rightarrow Database
+\end{align}
+
+\textbf{Semantics}:
+\begin{align}
+copyColumnStructure(ts_1, ts_2, col, l, d) = d' \implies 
+\end{align}
+
+%TODO is it needed?
+\subsubsection{copyTableStructure}
+\begin{align}
+copyTableStructure: TableSchema \times Label \times Database \rightarrow Database
+\end{align}
+
+\textbf{Semantics}:
+\begin{align}
+& copyTableStructure(ts, l d) = d' \implies \exists ts_n \in tableSchemas(d') : ts_n \notin tableSchemas(d)   \nonumber \\
+& \;\;\; \land label(ts_n) = l \land \forall col \in coluumns(ts) \exists col_n \in columns(ts_n)
+\end{align}
+
