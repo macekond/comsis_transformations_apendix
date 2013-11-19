@@ -460,7 +460,7 @@ dropEmptyTable:  TableSchema \times Database \rightarrow Database
 & copyColumn(ts_1, ts_2, col, m, d) = d' \implies 
 columns(ts_2') = columns(ts_2) \cup col \land \nonumber \\
 & \;\;\; \forall p_i \in selectAll(ts_1, d) \land p_i \in dom(m_i), m_i \in m, q_{i} \in ran(m_i) : m(p_i) = q_i \implies \nonumber \\
-& \;\;\;  insertValue(id(q_i), (col, valueOfColumn(col, p_i)), d')  \nonumber \\
+& \;\;\;  insertValue(q_i, (col, valueOfColumn(col, p_i)), d')  \nonumber \\
 & \;\;\; \mathbf{if} \; ts_1 \neq ts_2 \land col \in columns(ts_1)
 \end{align}
 
@@ -694,16 +694,19 @@ copyTable: TableSchema \times Label \times Database \rightarrow Database
 \subsubsection{moveProperty}
 \begin{align}
 & moveProperty: Class \times Class \times Property \times Mapping \times Software \rightarrow Software \\
-& moveProperty(c_s, c_t, p, m, s) = removeProperty(c_s, p, copyProperty(c_s, c_t, p, m, s))
+& moveProperty(c_s, c_t, p, m, s) = \begin{cases}
+removeProperty(c_s, p, copyProperty(c_s, c_t, p, m, s)) \\
+\mathbf{if} |p| = 1 \\\\
+moveProperty(c_s, c_t, tail(p), m, removeProperty(c_s, head(p), \\ \;\;\; copyProperty(c_s, c_t, head(p), m, s))) \\ 
+\mathbf{if} |p| > 1
+ \end{cases}
 \end{align}
 
 \subsubsection{mergeClasses}
 \begin{align}
 & mergeClass:  Class \times Class \times Mapping \times Software \rightarrow Software \\
-%má jen jednu property, vysvětlit, kde se vzala p
-%TODO definovat postupnou aplikaci
 & mergeClass(c_1, c_2, m, s) = removeClass(c_2, moveProperty(c_1, c_2, p, m, s)) \\
-& \mathbf{where} p \in properties(c_2) \nonumber \\ 
+& \mathbf{where} p = properties(c_2) \nonumber \\ 
 & \;\; \mathbf{if} !isReferenced(c_2, application(s))
 \end{align}
 
@@ -877,7 +880,34 @@ addTable(ORM(c), d)) \nonumber \\
 
 
 \subsubsection{extractCommonParent}
-%TODO do
+\begin{align}
+& extractCommonParent: Class \times Property \times InheritanceType \times Label \times
+\nonumber \\
+& \;\;\; ConsistentSoftware \rightarrow Software \\
+& extractCommonParent(c, p, it, l, s) = \begin{cases}
+     extractParent(c, p, it, l, s) \\
+     \mathbf{if} \; |c| = 1 \\\\
+     h(tail(c), p, it, l, extractParent(head(c), p, it, l, s)) \\
+       \mathbf{if} \; |c| > 1
+ \end{cases} \\
+& \;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\; \mathbf{if} \; \forall \: e \in c : p \in properties(e)
+\end{align}
+
+\begin{align}
+& h: Class \times Property \times InheritanceType \times Label \times
+\nonumber \\
+& \;\;\; ConsistentSoftware \rightarrow Software \\
+& h(c, p, it, l, s) = \begin{cases}
+    moveProperty(c, f, p, m, addParent(c, f, s)) \\
+    \mathbf{if} \; |c| = 1 \\
+   \\
+    h(tail(c), p, it, l, moveProperty(head(c), f, p, m, addParent(head(c), f, s)))\\
+    \mathbf{if} \; |c| > 1
+ \end{cases} \nonumber \\
+&   \mathbf{where} \; f = class(l, \emptyset, \emptyset, OBJECT) \land  \\
+&    \;\;\; m \in Mapping, dom(m) = selectAll(ORM(c)) : \forall r \in m :  m(r) = r 
+\end{align}
+
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -987,33 +1017,12 @@ insertData(td, d) = d' \implies tableData(d') = tableData(d) \cup td
 
 \subsubsection{insertValue}
 \begin{align}
-insertValue: ID \times Pair \times  Database \rightarrow Database
+insertValue: TableData \times Pair \times  Database \rightarrow Database
 \end{align}
 
 \textbf{Semantics}:
 \begin{align}
-insertValue(id, p, d) = d' \implies
-\end{align}
-
-\subsubsection{deleteData}
-\begin{align}
-deleteData: TableSchema \times ID \times  Database \rightarrow Database
-\end{align}
-
-\textbf{Semantics}:
-\begin{align}
-& deleteData(ts, id, d) = d' \implies \exists td \in tableData(d) : id(td) = id \land table(td) = ts \land \nonumber \\
-& \;\;\; tableData(d') = tableData(d) \setminus td
-\end{align}
-
-%TODO is it needed?
-\subsubsection{delete}
-\begin{align}
-delete: TableSchema \times ID \times Column \times Database \rightarrow Database
-\end{align}
-
-\textbf{Semantics}:
-\begin{align}
+insertValue(td, p, d) = d' \implies tableData(d') = tableData(d) \setminus td \cup td' \land pairs(td') = pairs(td) \cup p 
 \end{align}
 
 
