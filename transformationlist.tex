@@ -706,7 +706,7 @@ moveProperty(c_s, c_t, tail(p), m, removeProperty(c_s, head(p), \\ \;\;\; copyPr
 \begin{align}
 & mergeClass:  Class \times Class \times Mapping \times Software \rightarrow Software \\
 & mergeClass(c_1, c_2, m, s) = removeClass(c_2, moveProperty(c_1, c_2, p, m, s)) \\
-& \mathbf{where} p = properties(c_2) \nonumber \\ 
+& \mathbf{where} p =  properties(c_2) \nonumber \\ 
 & \;\; \mathbf{if} !isReferenced(c_2, application(s))
 \end{align}
 
@@ -725,7 +725,6 @@ removeProperty(c, p, newProperty(c_n, p,  addClass(c_n, a))) \nonumber \\
 & \;\;\; c_n = class(l, \emptyset, \emptyset, OBJECT)
 \end{align}
 \begin{align}
-%TODO použití copycolumn tu není dobré - spíš insert
 \Phi(splitClass(c, l, p), d) = \begin{cases}
 dropColumn(ORM(c), ORM(p), copyColumn(ORM(c), \\  \;\; ORM(propToClass(p)), m, addTable(ORM(propToClass(p, l)), d)))\\
 \mathbf{where} \; m = \forall r \in selectAll(ORM(c), d) : \\  \;\; m(r) = tableData((ORM(propToClass(p, l)), keyPair(r), \\  \;\;\;\; pairOfColumn(ORM(p), pairs(r)))) \\ 
@@ -754,9 +753,10 @@ alterTableName(ORM(p), l, dropForeignKey(ORM(p), \\ \;\; foreignKeys(ORM(p), d))
 & \Psi(extractPropertyAsObject(c, p, l), d) = \\
 & \;\;\;\; \begin{cases}
  addForeignKey(ts_t, foreignKey(label(c), ORM(c), NOTNULL), \\
- \;\; copyColumn(ORM(c), ts_t, m,  addTable(ts_t, d))) \\
- \mathbf{if}\; cardinality(p) = 1
- \mathbf{where} ts_t = (ORM(propToClass(p, l))
+ \;\; copyColumn(ORM(c), ts_t, m, addTable(ts_t, d))) \\
+ \mathbf{if}\; cardinality(p) = 1 \\
+ \mathbf{where} \; ts_t = ORM(propToClass(p, l)) \land \\
+ m \in Mapping, r \in selectAll(ORM(c),d) : m(r) = r 
  \\\\
  alterTableName(ORM(p), l, d) \\
  \mathbf{if}\; cardinality(p) > 1
