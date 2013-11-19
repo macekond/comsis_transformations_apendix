@@ -702,13 +702,41 @@ moveProperty(c_s, c_t, tail(p), m, removeProperty(c_s, head(p), \\ \;\;\; copyPr
  \end{cases}
 \end{align}
 
-\subsubsection{mergeClasses}
+\subsubsection{inlineClass}
 \begin{align}
-& mergeClass:  Class \times Class \times Mapping \times Software \rightarrow Software \\
-& mergeClass(c_1, c_2, m, s) = removeClass(c_2, moveProperty(c_1, c_2, p, m, s)) \\
+& inlineClass:  Class \times Class \times Mapping \times Software \rightarrow Software \\
+& inlineClass(c_1, c_2, m, s) = removeClass(c_2, moveProperty(c_1, c_2, p, m, s)) \\
 & \mathbf{where} p =  properties(c_2) \nonumber \\ 
 & \;\; \mathbf{if} !isReferenced(c_2, application(s))
 \end{align}
+
+\subsubsection{mergeClasses}
+\begin{align}
+& mergeClasses: Class \times Class \times Label \times Software  \rightarrow Software \\
+& mergeClasses(c_1, c_2, l, s) = software(\Psi(mergeClasses(c_1, c_2, l, application(s)), \\
+& \;\;\; \Phi(mergeClasses(c_1, c_2, l, database(s)) \nonumber \\
+& \;\; \mathbf{if} properties(c_1) = properties(c_2) \nonumber
+\end{align}
+\begin{align}
+\Psi(mergeClasses(c_1, c_2, l, a)) = removeClass(c_2, renameClass(c_1, l, a))
+\end{align}
+\begin{align}
+& \Phi(mergeClasses(c_1, c_2, l, d)) = \nonumber \\
+& \;\;\; alterTableName(ORM(c_1), l, k(ORM(c_2), selectAll(ORM(c_1), d), d)) \nonumber \\
+&  \mathbf{if} \; !\:isReferenced(ORM(c_1), d) \land \; !\:isReferenced(ORM(c_2), d) 
+\end{align}
+\begin{align}
+& k: TableSchema \times TableData \times Database \rightarrow Database \\
+& k(ts, td, d) = \begin{cases}
+ insertData(ts, tableData(ts, (pk, next(pk)) , pairs(td)) , d) \\
+ \mathbf{if} |td| = 1 \\
+ \mathbf{where} \; pk = primaryKey(ts) 
+ \\\\
+ k(ts, tail(td), k(ts, head(td), d))
+  \mathbf{if} |td| > 1 \\
+ \end{cases}
+\end{align}
+
 
 
 \subsubsection{splitClass}
