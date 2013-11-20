@@ -381,9 +381,15 @@ dropColumn: TableSchema \times Column \times Database \rightarrow Database
 
 \noindent \textbf{Semantics}:
 \begin{align}
-& dropColumn(ts, col, d) = d' \implies columns(ts') = columns(ts) \setminus col \land \nonumber \\
-& \;\;\ tableSchemas(d') = tableSchemas(d) \setminus ts \cup ts'  \nonumber \\
-& \;\;\; \mathbf{if}  \;\; col \in columns(ts)
+& dropColumn(ts, col, d) = d' \implies \\
+& \begin{cases}
+ columns(ts') = columns(ts) \setminus col \land \nonumber \\
+     tableSchemas(d') = tableSchemas(d) \setminus ts \cup ts'  \nonumber \\
+ \mathbf{if}  \; col \in columns(ts) \land |col| = 1
+ \\\\
+ dropColumn(ts, tail(col), dropColumn(ts, head(col), d)) \\
+ \mathbf{if} \; |col| > 1
+ \end{cases}
 \end{align}
 
 \subsubsection{dropEmptyColumn}
@@ -457,11 +463,16 @@ dropEmptyTable:  TableSchema \times Database \rightarrow Database
 
 \noindent \textbf{Semantics}:
 \begin{align}
-& copyColumn(ts_1, ts_2, col, m, d) = d' \implies 
-columns(ts_2') = columns(ts_2) \cup col \land \nonumber \\
-& \;\;\; \forall p_i \in selectAll(ts_1, d) \land p_i \in dom(m_i), m_i \in m, q_{i} \in ran(m_i) : m(p_i) = q_i \implies \nonumber \\
-& \;\;\;  insertValue(q_i, (col, valueOfColumn(col, p_i)), d')  \nonumber \\
-& \;\;\; \mathbf{if} \; ts_1 \neq ts_2 \land col \in columns(ts_1)
+& copyColumn(ts_1, ts_2, col, m, d) = d' \implies \\ 
+& \begin{cases}
+ columns(ts_2') = columns(ts_2) \cup col \land \nonumber \\
+     \forall p_i \in selectAll(ts_1, d) \land p_i \in dom(m_i), m_i \in m, q_{i} \in ran(m_i) : m(p_i) = q_i \implies \nonumber \\
+  insertValue(q_i, (col, valueOfColumn(col, p_i)), d')  \nonumber \\
+ \mathbf{if} \; ts_1 \neq ts_2 \land col \in columns(ts_1) \land |col| = 1
+ \\\\
+ copyColumn(ts_1, ts_2, tail(col), m, copyColumn(ts_1, ts_2, head(col), m, d))\\
+ \mathbf{if} \; |col| > 1
+ \end{cases}
 \end{align}
 
 
@@ -711,11 +722,12 @@ moveProperty(c_s, c_t, tail(p), m, removeProperty(c_s, head(p), \\ \;\;\; copyPr
 \end{align}
 
 \subsubsection{mergeClasses}
+%TODO reference
 \begin{align}
 & mergeClasses: Class \times Class \times Label \times Software  \rightarrow Software \\
-& mergeClasses(c_1, c_2, l, s) = software(\Psi(mergeClasses(c_1, c_2, l, application(s)), \\
+& mergeClasses(c_1, c_2, l, s) = software(\Psi(mergeClasses(c_1, c_2, l, application(s)), \nonumber \\
 & \;\;\; \Phi(mergeClasses(c_1, c_2, l, database(s)) \nonumber \\
-& \;\; \mathbf{if} properties(c_1) = properties(c_2) \nonumber
+& \;\; \mathbf{if} properties(c_1) = properties(c_2) \land \; !isReferenced(c_1, d) \land  \; !isReferenced(c_2, d)
 \end{align}
 \begin{align}
 \Psi(mergeClasses(c_1, c_2, l, a)) = removeClass(c_2, renameClass(c_1, l, a))
@@ -777,7 +789,6 @@ alterTableName(ORM(p), l, dropForeignKey(ORM(p), \\ \;\; foreignKeys(ORM(p), d))
  & \;\;\;  cardinality(p)), addClass(propToClass(p, l), a))
 \end{align}
 \begin{align}
-%TODO data
 & \Psi(extractPropertyAsObject(c, p, l), d) = \\
 & \;\;\;\; \begin{cases}
  addForeignKey(ts_t, foreignKey(label(c), ORM(c), NOTNULL), \\
@@ -824,7 +835,6 @@ The transformation \emph{inlineObjectAsProperty} creates a property from the giv
 
 
 %TODO kolize jmen s aplikační úrovní?
-%TODO funguje i když je A nebo B prázdné?
 \subsubsection{addParent}
 \begin{align}
 & addParent: Class \times Inheritance \times Mapping \times Software \rightarrow Software \nonumber \\
@@ -852,11 +862,10 @@ The transformation \emph{inlineObjectAsProperty} creates a property from the giv
 \noindent \textbf{Interpretation}:
 \begin{align}
 \Psi(removeParent(c), a) = removeParent(c, a)
+& \mathbf{if} \; children(c, a) = \emptyset
 \end{align}
 \begin{align}
 &\Phi(removeParent(c), d) = 
-%TODO extend interpretation - move children as well
-%TODO má jen jednu property
 %TODO změnit reference
  dropColumn(ORM(class(inheritance(c))), ORM(properties(c)) \setminus \nonumber \\ 
 & \;\;\; ORM(properties(class(inheritance(c)))), copyColumn(ORM(class(inheritance(c))), ORM(c), \nonumber \\ 
@@ -1066,6 +1075,15 @@ Returns true if there is a foreign key, which references given class, in the dat
  \end{cases}
 \end{align}
 
+\subsubsection{reference}
+Returns a sequence of tableSchemas, which contains reference to a given tableSchema.
+\begin{align}
+& reference: TableData \times Database \rightarrow TableData \\
+& reference(td, d) = e \\
+& \;\; e \in tableSchemas(d) \land \exists f \in pairsForeignKeyValue(pairs(e)) \land reference(f) = td  
+\end{align}
+
+
 \subsubsection{valueOfColumn}
 \begin{align}
 & valueOfColumn: Column \times Pair \rightarrow Value \\
@@ -1081,9 +1099,16 @@ Returns true if there is a foreign key, which references given class, in the dat
 
 \subsubsection{pairsColumValue}
 \begin{align}
-& pairsColumValue: Pair \times ColumnValue \\
+& pairsColumValue: Pair \rightarrow ColumnValue \\
 & pairsColumValue(p) = q \implies q \in p \land column(q) \neq \emptyset  
 \end{align}
+
+\subsection{pairsForeignKeyValue}
+\begin{align}
+& pairsForeignKeyValue : Pair \rightarrow ForeignKeyValue \\
+& pairsForeignKeyValue(p) = q \implies q \in p \land reference(q) \neq \emptyset 
+\end{align}
+
 
 \subsubsection{copyPropertyAsTable}
 \begin{align}
