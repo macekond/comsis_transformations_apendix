@@ -460,6 +460,7 @@ dropEmptyTable:  TableSchema \times Database \rightarrow Database
 
 
 \subsubsection{copyColumn}
+The transformations copies structure of the column from one table schema to another. The data are copied according to the given mapping.
 \begin{align}
 & copyColumn: TableSchema \times TableSchema \times Column \times Mapping \times Database   \nonumber \\
 & \;\;\; \rightarrow Database
@@ -481,6 +482,7 @@ dropEmptyTable:  TableSchema \times Database \rightarrow Database
 
 
 \subsubsection{copyTable}
+The transformations creates a copy of the given table. The new table (copy) has a new name defined by \emph{label}. The data are copied as well.
 \begin{align}
 copyTable: TableSchema \times Label \times Database \rightarrow Database 
 \end{align}
@@ -501,6 +503,7 @@ copyTable: TableSchema \times Label \times Database \rightarrow Database
 \subsection{Basic Transformations}
 
 \subsubsection{newSoftware}
+Creates a new software with initialized application and database.
 \begin{align}
 & newSoftware: \rightarrow Software \\
 & newSoftware() = s \implies software(\Psi(newSoftware, \emptyset), \Phi(newSoftware, \emptyset))
@@ -516,6 +519,7 @@ copyTable: TableSchema \times Label \times Database \rightarrow Database
 
 
 \subsubsection{newClass}
+Inserts a class into the application and its image into the database.
 \begin{align}
 & newClass: Class \times Software \rightarrow Software \\
 & newClass(c, s) = s' \implies software(\Psi(newClass(c), application(s)), \nonumber \\
@@ -532,6 +536,7 @@ copyTable: TableSchema \times Label \times Database \rightarrow Database
 
 
 \subsubsection{newProperty}
+Inserts a property into the given class in the application and its image into the database.
 \begin{align}
 & newProperty: Class \times Property \times Software \rightarrow Software \\
 & newProperty(c, p, s) = s' \implies \nonumber \\ 
@@ -552,6 +557,7 @@ copyTable: TableSchema \times Label \times Database \rightarrow Database
 
 
 \subsubsection{newAssociation}
+Inserts a new association between two existing classes into the application and its image into the database.
 \begin{align}
 & newAssociation: Class \times Association \times Mapping \times Software \rightarrow Software \\
 & newAssociation(c, as, s) = s' \implies \nonumber \\ 
@@ -570,6 +576,7 @@ copyTable: TableSchema \times Label \times Database \rightarrow Database
 
 %TODO kolize jmen s aplikační úrovní?
 \subsubsection{renameProperty}
+The transformation changes the label of the given property.
 \begin{align}
 & renameProperty: Class \times Property \times Label \times Software \rightarrow Software \nonumber \\
 & renameProperty(c, p, l, s) = software(\Psi(renameProperty(c, p, l), application(s)),  \nonumber \\ 
@@ -590,6 +597,7 @@ copyTable: TableSchema \times Label \times Database \rightarrow Database
 
 %TODO kolize jmen s aplikační úrovní?
 \subsubsection{renameAssociation}
+The transformation changes the label of the given association.
 \begin{align}
 & renameAssociation: Class \times Association \times Label \times Software \rightarrow Software \nonumber \\
 & renameAssociation(c, as, l, s) = software(\Psi(renameAssociation(c, as, l), application(s)),  \nonumber \\ 
@@ -606,6 +614,7 @@ copyTable: TableSchema \times Label \times Database \rightarrow Database
 
 %TODO kolize jmen s aplikační úrovní?
 \subsubsection{renameClass}
+The transformation changes the label of the given class.
 \begin{align}
 & renameClass: Class \times Label \times Software \rightarrow Software \nonumber \\
 & renameClass(c, l s) = software(\Psi(renameClass(c, l), application(s)), \nonumber \\
@@ -622,6 +631,7 @@ copyTable: TableSchema \times Label \times Database \rightarrow Database
 
 %TODO kolize jmen s aplikační úrovní?
 \subsubsection{removeProperty}
+The transformation removes the given property from the given class.
 \begin{align}
 & removeProperty: Class \times Property \times Software \rightarrow Software \nonumber \\
 & removeProperty(c, p, s) = \begin{cases}
@@ -646,6 +656,7 @@ copyTable: TableSchema \times Label \times Database \rightarrow Database
 
 %TODO kolize jmen s aplikační úrovní?
 \subsubsection{removeAssociation}
+The transformation removes the given association from the software.
 \begin{align}
 & removeAssociation: Class \times Association \times Software \rightarrow Software \nonumber \\
 & removeAssociation(c, as, s) = \begin{cases}
@@ -667,6 +678,7 @@ copyTable: TableSchema \times Label \times Database \rightarrow Database
 
 %TODO kolize jmen s aplikační úrovní?
 \subsubsection{removeClass}
+The transformation removes the class from the software.
 \begin{align}
 & removeClass: Class \times Software \rightarrow Software \nonumber \\
 & removeClass(c, s) = \begin{cases}
@@ -687,6 +699,7 @@ copyTable: TableSchema \times Label \times Database \rightarrow Database
 \end{align}
 
 \subsubsection{copyProperty}
+The transformation copies the given property from one given class to another.
 \begin{align}
 & copyProperty: Class \times Class \times Property \times Mapping \times Software \rightarrow Software \\
 & copyProperty(c_s, c_t, p, m, s) = software(\Psi(copyProperty(c_s, c_t, m, p), application(s)), \nonumber \\
@@ -707,6 +720,7 @@ copyTable: TableSchema \times Label \times Database \rightarrow Database
 \end{align}
 
 \subsubsection{moveProperty}
+The transformation moves the given property from one given class to another. A copy of given property is created and the original is then removed.
 \begin{align}
 & moveProperty: Class \times Class \times Property \times Mapping \times Software \rightarrow Software \\
 & moveProperty(c_s, c_t, p, m, s) = \begin{cases}
@@ -726,7 +740,7 @@ moveProperty(c_s, c_t, tail(p), m, removeProperty(c_s, head(p), \\ \;\;\; copyPr
 \end{align}
 
 \subsubsection{mergeClasses}
-%TODO reference
+The transformation merges two classes with the same structure into one class.
 \begin{align}
 & mergeClasses: Class \times Class \times Label \times Software  \rightarrow Software \\
 & mergeClasses(c_1, c_2, l, s) = software(\Psi(mergeClasses(c_1, c_2, l, application(s)), \nonumber \\
@@ -756,6 +770,7 @@ moveProperty(c_s, c_t, tail(p), m, removeProperty(c_s, head(p), \\ \;\;\; copyPr
 
 
 \subsubsection{splitClass}
+The transformation extract a subsequence of properties from the given class into a new class. 
 \begin{align}
 & splitClass: Class \times Label \times Property \times Software \rightarrow Software \\
 & splitClass(c, l, p, s) = software(\Psi(splitClass(c, l, p), application(s)), \nonumber \\
@@ -780,6 +795,8 @@ alterTableName(ORM(p), l, dropForeignKey(ORM(p), \\ \;\; foreignKeys(ORM(p), d))
 
 %Property To Association
 \subsubsection{extractPropertyAsObject}
+The transformation changes one property into an object with property containing original value.
+
 \begin{align}
 & extractPropertyAsObject: Class \times Property \times Label \times Software \rightarrow Software \nonumber \\
 & extractPropertyAsObject(c, p, l, s) = 
@@ -837,9 +854,9 @@ The transformation \emph{inlineObjectAsProperty} creates a property from the giv
 \end{align}
 
 
-
 %TODO kolize jmen s aplikační úrovní?
 \subsubsection{addParent}
+Adds a parent - child relationship between the two given classes.
 \begin{align}
 & addParent: Class \times Inheritance \times Mapping \times Software \rightarrow Software \nonumber \\
 & addParent(c, ih, m, s) = software(\Psi(addParent(c, ih, m), application(s)), \nonumber \\
@@ -856,6 +873,7 @@ The transformation \emph{inlineObjectAsProperty} creates a property from the giv
 
 %TODO kolize jmen s aplikační úrovní?
 \subsubsection{removeParent}
+Destroys the parent-child relationship between two classes. To simplify the model we assume the child class is a leaf of the inheritance hierarchy.
 \begin{align}
 & removeParent: Class \times Software \rightarrow Software \nonumber \\
 & removeParent(c, s) = software(\Psi(removeParent(c), application(s)), \nonumber \\
@@ -881,6 +899,7 @@ addTable(ORM(c), d)) \nonumber \\
 
 %TODO kolize jmen s aplikační úrovní?
 \subsubsection{pushDown}
+The transformations moves one property from the parent class to all child classes.
 \begin{align}
 & pushDown: Class \times Property \times Software \rightarrow Software \nonumber \\
 & pushDown(c, p, s) = software(\Psi(pushDown(c, p), application(s)), \nonumber \\
@@ -897,6 +916,7 @@ addTable(ORM(c), d)) \nonumber \\
 
 %TODO kolize jmen s aplikační úrovní?
 \subsubsection{pullUp}
+The transformation moves one property from the child class into the parent class.
 \begin{align}
 & pullUp: Class \times Property \times Software \rightarrow Software \nonumber \\
 & pullUp(c, p, s) = software(\Psi(pullUp(c, p), application(s)), \Phi(pullUp(c, p), database(s))
@@ -911,6 +931,7 @@ addTable(ORM(c), d)) \nonumber \\
 \end{align}
 
 \subsubsection{extractParent}
+The transformation creates a new class with the given property and creates the parent-child relationship between the new and the original class.
 \begin{align}
 & extractParent: Class \times Property \times InheritanceType \times Label \times  \nonumber \\
 & \;\;\; ConsistentSoftware \rightarrow Software \\
@@ -921,6 +942,7 @@ addTable(ORM(c), d)) \nonumber \\
 
 
 \subsubsection{extractCommonParent}
+The transformation creates a new class with the given property, which exists in all given classes and creates the parent-child relationship between the new and all the original classes.
 \begin{align}
 & extractCommonParent: Class \times Property \times InheritanceType \times Label \times
 \nonumber \\
@@ -1023,8 +1045,9 @@ Returns true if the first given class is in the direct or indirect parent of the
 \end{align}
 
 \subsection{Database Helpers}
-
 \subsubsection{selectOne}
+Select one \emph{TableData} which references given \emph{TableSchema} and has the given primary key value.
+%TODO ID
 \begin{align}
 selectOne: TableSchema \times ID \times  Database \rightarrow TableData
 \end{align}
@@ -1036,6 +1059,7 @@ selectOne: TableSchema \times ID \times  Database \rightarrow TableData
 \end{align}
 
 \subsubsection{selectAll}
+Select all \emph{TableData} which references given \emph{TableSchema}.
 \begin{align}
 selectAll: TableSchema \times  Database \rightarrow TableData
 \end{align}
@@ -1047,6 +1071,7 @@ selectAll: TableSchema \times  Database \rightarrow TableData
 \end{align}
 
 \subsubsection{insertData}
+Inserts one \emph{TableData} into the database.
 \begin{align}
 insertData: TableData \times Database \rightarrow Database
 \end{align}
@@ -1057,6 +1082,7 @@ insertData(td, d) = d' \implies tableData(d') = tableData(d) \cup td
 \end{align}
 
 \subsubsection{insertValue}
+Inserts one \emph{Pair} into the \emph{TableData} in the database.
 \begin{align}
 insertValue: TableData \times Pair \times  Database \rightarrow Database
 \end{align}
@@ -1089,12 +1115,14 @@ Returns a sequence of tableSchemas, which contains reference to a given tableSch
 
 
 \subsubsection{valueOfColumn}
+Returns the value of given column from set of pairs.
 \begin{align}
 & valueOfColumn: Column \times Pair \rightarrow Value \\
 & valueOfColumn(c, p) = value(p) \land c = column(p)
 \end{align}
 
 \subsubsection{pairOfColumn}
+Returns the \emph{Pair} in \emph{TableData} which reference given column.
 \begin{align}
 & pairOfColumn: Column \times TableData \rightarrow Pair \\
 & pairOfColumn(c, td) = p \implies p \in pairs(td) \land column(p) = c
@@ -1102,12 +1130,14 @@ Returns a sequence of tableSchemas, which contains reference to a given tableSch
 
 
 \subsubsection{pairsColumValue}
+Returns all \emph{Pairs} which references a column.
 \begin{align}
 & pairsColumValue: Pair \rightarrow ColumnValue \\
 & pairsColumValue(p) = q \implies q \in p \land column(q) \neq \emptyset  
 \end{align}
 
-\subsection{pairsForeignKeyValue}
+\subsubsection{pairsForeignKeyValue}
+Returns all \emph{Pairs} which references a foreign key.
 \begin{align}
 & pairsForeignKeyValue : Pair \rightarrow ForeignKeyValue \\
 & pairsForeignKeyValue(p) = q \implies q \in p \land reference(q) \neq \emptyset 
@@ -1115,6 +1145,7 @@ Returns a sequence of tableSchemas, which contains reference to a given tableSch
 
 
 \subsubsection{copyPropertyAsTable}
+The transformation copies the property which is represented as a table in the database.
 \begin{align}
 copyPropertyAsTable: TableSchema \times TableSchema \times Mapping \times Database \rightarrow Database
 \end{align}
@@ -1129,12 +1160,14 @@ copyPropertyAsTable: TableSchema \times TableSchema \times Mapping \times Databa
 \end{align}
 
 \subsubsection{propToClass}
+The transformation creates a class from the given property.
 \begin{align}
 & propToClass: Property \times Label \rightarrow Class \\
 & propToClass(p, l) = class(l, p, \emptyset, OBJECT)
 \end{align}
 
 \subsubsection{childern}
+Returns all children of the given class.
 \begin{align}
 & childern : Class \times Application \rightarrow Class \\
 & childern(c, a) = e \implies class(inheritance(e)) = c \land c \in classes(a) \land e \in classes(a)
