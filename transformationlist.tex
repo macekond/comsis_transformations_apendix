@@ -806,13 +806,13 @@ The transformation changes one property into an object with property containing 
 
 \noindent \textbf{Interpretation}:
 \begin{align}
-& \Phi(extractPropertyAsObject(c, p, l), a) =  addAssociation(c,  association(l, propToClass(p, l), 1,\nonumber \\
+& \Phi(extractPropertyAsObject(c, p, l), a) =  removeProperty(c, p, addAssociation(c,  association(l, propToClass(p, l), 1,\nonumber \\
  & \;\;\;  cardinality(p)), addClass(propToClass(p, l), a))
 \end{align}
 \begin{align}
 & \Psi(extractPropertyAsObject(c, p, l), d) = \\
 & \;\;\;\; \begin{cases}
- addForeignKey(ts_t, foreignKey(label(c), ORM(c), NOTNULL), \\
+dropColumn(ORM(c), ORM(p), addForeignKey(ts_t, foreignKey(label(c), ORM(c), NOTNULL), \\
  \;\; copyColumn(ORM(c), ts_t, m, addTable(ts_t, d))) \\
  \mathbf{if}\; cardinality(p) = 1 \\
  \mathbf{where} \; ts_t = ORM(propToClass(p, l)) \land \\
