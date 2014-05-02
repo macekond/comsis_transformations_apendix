@@ -708,7 +708,8 @@ The transformation copies the given property from one given class to another.
 
 \noindent \textbf{Interpretation}:
 \begin{align}
-\Psi(copyProperty(c_s, c_t, p, m), a) = newProperty(c_t, p, a)
+\Psi(copyProperty(c_s, c_t, p, m), a) = newProperty(c_t, p, a)  \nonumber \\
+& \mathbf{if} \; c_s \neq c_t
 \end{align}
 \begin{align}
 \Phi(copyProperty(c_s, c_t, p, m), d) = \begin{cases}
@@ -868,7 +869,8 @@ Adds a parent - child relationship between the two given classes.
 
 \noindent \textbf{Interpretation}:
 \begin{align}
-\Psi(addParent(c, ih, m), a) = addParent(c, ih, a)
+& \Psi(addParent(c, ih, m), a) = addParent(c, ih, a) \nonumber \\
+& \;\;\; \mathbf{if} \; !\; isReferenced(c)
 \end{align}
 \begin{align}
 \Phi(addParent(c, ih, m), d) = \Phi(mergeClasses(c, class(ih), m), d)
