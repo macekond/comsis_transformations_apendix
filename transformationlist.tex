@@ -2,7 +2,7 @@
 
 \usepackage[fleqn]{amsmath}
 \usepackage{fullpage}
-\usepackage{url}
+\usepackage{hyperref}
 
 \begin{document}
 \title{List of Transformations for Code and Relational Database Evolution}
@@ -542,7 +542,7 @@ Inserts a property into the given class in the application and its image into th
 & newProperty: Class \times Property \times Software \rightarrow Software \\
 & newProperty(c, p, s) = s' \implies \nonumber \\ 
 & \;\;\; software(\Psi(newProperty(c, p), application(s)), \Phi(newProperty(c,p), database(s)) \\
-& \mathbf{if}\; mandatory(d) = 0
+& \mathbf{if}\; (mandatory(d) = 1 \land selectAll(ORM(c), database(s)) = \emptyset ) \lor mandatory(d) = 0
 \end{align}
 
 \noindent \textbf{Interpretation}:
