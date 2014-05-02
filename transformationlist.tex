@@ -2,6 +2,7 @@
 
 \usepackage[fleqn]{amsmath}
 \usepackage{fullpage}
+\usepackage{url}
 
 \begin{document}
 \title{List of Transformations for Code and Relational Database Evolution}
@@ -540,7 +541,8 @@ Inserts a property into the given class in the application and its image into th
 \begin{align}
 & newProperty: Class \times Property \times Software \rightarrow Software \\
 & newProperty(c, p, s) = s' \implies \nonumber \\ 
-& \;\;\; software(\Psi(newProperty(c, p), application(s)), \Phi(newProperty(c,p), database(s))
+& \;\;\; software(\Psi(newProperty(c, p), application(s)), \Phi(newProperty(c,p), database(s)) \\
+& \mathbf{if}\; mandatory(d) = 0
 \end{align}
 
 \noindent \textbf{Interpretation}:
@@ -548,11 +550,14 @@ Inserts a property into the given class in the application and its image into th
 \Psi(newProperty(c, p), a) = addProperty(c, p, a)
 \end{align}
 \begin{align}
-\Phi(newProperty(c, p), d) = \begin{cases}
+&\Phi(newProperty(c, p), d) = \begin{cases}
   addColumn(ORM(c), ORM(p),  d) \\ \mathbf{if} \; cardinality(p) = 1  \\\\ 
-  \; addTable(ORM(p),  d) \\
-  \mathbf{if} \; cardinality(p) > 1  
-   \end{cases}
+  addForeignKey(ORM(p), fk , m_e,  \\
+  \;\;\; addTable(ORM(p),  d)) \\
+  \mathbf{if} \; cardinality(p) > 1  \\
+  \mathbf{where} \; fk = (ORM(c) + "\_ref", ORM(C), \langle \rangle)
+   \end{cases}\\
+& c \in Class, p \in Property, d \in Database   \nonumber
 \end{align}
 
 
