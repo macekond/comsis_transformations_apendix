@@ -43,11 +43,11 @@ Only one type of \emph{InheritanceType} -- \emph{SINGLETABLE} -- is used in defi
 \section{Database Model}
 \subsection{Database Schema}
 \begin{align}
-&	\mathbf{Database} = ( TableSchema*, TableData* )\\
+&	\mathbf{Database} = ( TableSchema*, TableData*, Sequence )\\
 &	\mathbf{TableSchema} = (label, primaryKey, Column*, ForeignKey*)\\
 &	\mathbf{Column} = (label, DbType, DefaultValue, Constraint*) \\
 &	\mathbf{ForeignKey} = (label, TableSchema, Constraint*) \\
-&	\mathbf{PrimaryKey} =  ( label, Sequence ) \\
+&	\mathbf{PrimaryKey} =  ( label ) \\
 &	\mathbf{DbType} = DBSTRING \; | \; DBINT \; | \; DBBOOLEAN\\
 &	\mathbf{Constraint} = NOTNULL \; | \; UNIQUE 
 \end{align}
@@ -494,7 +494,7 @@ copyTable: TableSchema \times Label \times Database \rightarrow Database
 \exists ts_2 = (l, primaryKey(ts), columns(ts), \nonumber \\
 & \;\;\; foreignKeys(ts)) : ts_2 \in tableSchemas(d') \land ts_2 \notin tableSchemas(d) \nonumber \\
 & \;\;\; \forall q \in ran(m) : p \in dom(m) \land m(m) = q \land \nonumber \\  
-& \;\;\; insertData(next(sequence(primaryKey(ts_2))), pairs(p))  \nonumber \\
+& \;\;\; insertData(next(sequence(d)), pairs(p))  \nonumber \\
 & \;\;\; \mathbf{if} \; \forall t \in tableSchemas(d) : label(t) \neq l \land ts \in tableSchemas(d)
 \end{align}
 
@@ -766,7 +766,7 @@ The transformation merges two classes with the same structure into one class.
 \begin{align}
 & k: TableSchema \times TableData \times Database \rightarrow Database \\
 & k(ts, td, d) = \begin{cases}
- insertData(ts, tableData(ts, (pk, next(pk)) , pairs(td)) , d) \\
+ insertData(ts, tableData(ts, (pk, next(sequence(d))) , pairs(td)) , d) \\
  \mathbf{if} |td| = 1 \\
  \mathbf{where} \; pk = primaryKey(ts) 
  \\\\
@@ -1165,7 +1165,7 @@ copyPropertyAsTable: TableSchema \times TableSchema \times Mapping \times Databa
 & \;\;\;  \exists ts_2 = (l, primaryKey(ts), columns(ts), fk_2) :  \nonumber \\
 & \;\;\;  ts_2 \in tableSchemas(d') \land ts_2 \notin tableSchemas(d) \nonumber \\
 & \;\;\; \forall q \in ran(m) : p \in dom(m) \land m(m) = q \land \nonumber \\  
-& \;\;\; insertData(next(sequence(primaryKey(ts_2))), pairsColumValue(p) \cup (fk_2, id(q)) , d')  \nonumber \\
+& \;\;\; insertData(next(sequence(d)), pairsColumValue(p) \cup (fk_2, id(q)) , d')  \nonumber \\
 & \;\;\; \mathbf{if} \; \forall t \in tableSchemas(d) : label(t) \neq l \land ts \in tableSchemas(d)
 \end{align}
 
