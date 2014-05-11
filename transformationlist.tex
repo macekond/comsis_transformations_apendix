@@ -980,7 +980,7 @@ The transformation creates a new class with the given property, which exists in 
     \mathbf{if} \; |c| > 1
  \end{cases} \nonumber \\
 &   \mathbf{where} \; f = class(l, \emptyset, \emptyset, OBJECT) \land  \\
-&    \;\;\; m \in Mapping, dom(m) = selectAll(ORM(c)) : \forall \: r \in m :  m(r) = r 
+&    \;\;\; m \in Mapping, dom(m) = selectAll(ORM(c)) : \forall \: r \in m :  m(r) = r  \nonumber
 \end{align}
 
 
@@ -988,6 +988,32 @@ The transformation creates a new class with the given property, which exists in 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Helpers}
 This section contains functions, which serves to obtain information about a model element.
+
+\subsection{Software Helpers}
+\subsubsection{application}
+Returns the model of application contained in a software.
+\begin{align}
+& application : Software \rightarrow Application \\
+& application(software(a, d, \rho) = a \\
+& a \in Application, d \in Database, \rho \in ORM \nonumber  
+\end{align}
+
+\subsubsection{database}
+Returns the model of database contained in a software.
+\begin{align}
+& database : Software \rightarrow Database \\
+& database(software(a, d, \rho) = d \\
+& a \in Application, d \in Database, \rho \in ORM \nonumber  
+\end{align}
+
+\subsubsection{$\rho$}
+Returns the ORM contained in a software.
+\begin{align}
+& \rho : Software \rightarrow ORM \\
+& \rho(software(a, d, \rho) = \rho \\
+& a \in Application, d \in Database, \rho \in ORM \nonumber  
+\end{align}
+
 \subsection{Application Helpers}
 
 \subsubsection{propertyInParent}
